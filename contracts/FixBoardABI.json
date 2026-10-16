@@ -1,0 +1,254 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "entryIndex", "type": "uint256" },
+      { "indexed": false, "internalType": "string", "name": "action", "type": "string" },
+      { "indexed": false, "internalType": "string", "name": "choreId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "actor", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "AuditRecorded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "string", "name": "choreId", "type": "string" },
+      { "indexed": false, "internalType": "bytes32", "name": "choreHash", "type": "bytes32" },
+      { "indexed": false, "internalType": "address", "name": "creator", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "ChoreRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "string", "name": "choreId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "commenter", "type": "address" },
+      { "indexed": false, "internalType": "bytes32", "name": "commentHash", "type": "bytes32" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "CommentRecorded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "string", "name": "choreId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "backer", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "newTotal", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "PledgeMade",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "string", "name": "choreId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "voter", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "newTotal", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "VoteCast",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "string", "name": "choreId", "type": "string" },
+      { "indexed": false, "internalType": "address", "name": "voter", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "newTotal", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "VoteRevoked",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "name": "auditLog",
+    "outputs": [
+      { "internalType": "string", "name": "action", "type": "string" },
+      { "internalType": "string", "name": "choreId", "type": "string" },
+      { "internalType": "address", "name": "actor", "type": "address" },
+      { "internalType": "uint256", "name": "value", "type": "uint256" },
+      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+      { "internalType": "bytes32", "name": "dataHash", "type": "bytes32" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "name": "choreIds",
+    "outputs": [
+      { "internalType": "string", "name": "", "type": "string" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "", "type": "string" }
+    ],
+    "name": "chores",
+    "outputs": [
+      { "internalType": "bytes32", "name": "choreHash", "type": "bytes32" },
+      { "internalType": "address", "name": "creator", "type": "address" },
+      { "internalType": "uint256", "name": "totalVotes", "type": "uint256" },
+      { "internalType": "uint256", "name": "totalPledged", "type": "uint256" },
+      { "internalType": "uint256", "name": "createdAt", "type": "uint256" },
+      { "internalType": "bool", "name": "exists", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_offset", "type": "uint256" },
+      { "internalType": "uint256", "name": "_limit", "type": "uint256" }
+    ],
+    "name": "getAuditLogPage",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "string", "name": "action", "type": "string" },
+          { "internalType": "string", "name": "choreId", "type": "string" },
+          { "internalType": "address", "name": "actor", "type": "address" },
+          { "internalType": "uint256", "name": "value", "type": "uint256" },
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "bytes32", "name": "dataHash", "type": "bytes32" }
+        ],
+        "internalType": "struct FixBoard.AuditEntry[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAuditLogLength",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_choreId", "type": "string" }
+    ],
+    "name": "getChore",
+    "outputs": [
+      { "internalType": "bytes32", "name": "choreHash", "type": "bytes32" },
+      { "internalType": "address", "name": "creator", "type": "address" },
+      { "internalType": "uint256", "name": "totalVotes", "type": "uint256" },
+      { "internalType": "uint256", "name": "totalPledged", "type": "uint256" },
+      { "internalType": "uint256", "name": "createdAt", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getChoreCount",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "", "type": "string" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "hasVoted",
+    "outputs": [
+      { "internalType": "bool", "name": "", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_choreId", "type": "string" },
+      { "internalType": "address", "name": "_wallet", "type": "address" }
+    ],
+    "name": "hasWalletVoted",
+    "outputs": [
+      { "internalType": "bool", "name": "", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_choreId", "type": "string" }
+    ],
+    "name": "pledge",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "", "type": "string" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "pledges",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_choreId", "type": "string" },
+      { "internalType": "bytes32", "name": "_commentHash", "type": "bytes32" }
+    ],
+    "name": "recordComment",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_choreId", "type": "string" },
+      { "internalType": "bytes32", "name": "_dataHash", "type": "bytes32" }
+    ],
+    "name": "registerChore",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_choreId", "type": "string" },
+      { "internalType": "bytes32", "name": "_dataHash", "type": "bytes32" }
+    ],
+    "name": "revokeVote",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_choreId", "type": "string" }
+    ],
+    "name": "vote",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
