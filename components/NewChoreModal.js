@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../lib/AppContext';
+import { useToast } from '../lib/ToastContext';
 import { formatAddress } from '../lib/web3';
-import { X, Sparkles, ShieldCheck, Wallet } from 'lucide-react';
+import { X, ShieldCheck, Wallet } from 'lucide-react';
 
 const CATEGORIES = [
-  { id: 'catalog', label: '📦 Catalog Cleanup' },
-  { id: 'returns', label: '🔄 Return Handling' },
-  { id: 'sync', label: '🔗 Marketplace Sync' },
-  { id: 'listings', label: '📝 Listing Errors' },
-  { id: 'pricing', label: '💰 Pricing & Repricer' },
-  { id: 'shipping', label: '🚚 Shipping & Carriers' },
-  { id: 'other', label: '🧩 Other Operations' },
+  { id: 'catalog', label: 'Catalog Cleanup' },
+  { id: 'returns', label: 'Return Handling' },
+  { id: 'sync', label: 'Marketplace Sync' },
+  { id: 'listings', label: 'Listing Errors' },
+  { id: 'pricing', label: 'Pricing & Repricer' },
+  { id: 'shipping', label: 'Shipping & Carriers' },
+  { id: 'other', label: 'Other Operations' },
 ];
 
-export default function NewChoreModal({ onClose }) {
+export default function NewChoreModal({ isOpen = true, onClose }) {
   const { createChore, wallet } = useApp();
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('catalog');
@@ -23,215 +25,228 @@ export default function NewChoreModal({ onClose }) {
   const [author, setAuthor] = useState('');
   const [platforms, setPlatforms] = useState('Amazon, Shopify');
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title || !description || !author) return;
+    if (!title.trim() || !description.trim() || !author.trim()) {
+      toast.error('Incomplete form', 'Please provide a title, description, and your seller name.');
+      return;
+    }
 
     createChore({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim(),
       category,
       pain: Number(pain),
       fundingGoal: Number(fundingGoal) || 0,
-      author,
-      platforms: platforms.split(',').map(p => p.trim()).filter(Boolean)
+      author: author.trim(),
+      platforms: platforms.split(',').map((p) => p.trim()).filter(Boolean),
     });
+
+    toast.success('Chore Registered', 'Deterministic Keccak-256 hash verified for EVM ledger.');
     onClose();
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div 
-        className="modal-content glass-panel" 
-        onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--bg-card)' }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="new-chore-title">
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Post a New Chore</h2>
-              <span style={{
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                padding: '0.15rem 0.45rem',
-                borderRadius: '9999px',
-                background: 'rgba(16, 185, 129, 0.1)',
-                color: 'var(--accent-emerald)',
-                border: '1px solid rgba(16, 185, 129, 0.25)'
-              }}>
-                Ethereum Hashed
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 id="new-chore-title" style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                Post a New Chore
+              </h2>
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  padding: '2px 6px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--success-subtle)',
+                  color: 'var(--success-text)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                EVM Hashed
               </span>
             </div>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Surface a repetitive operational chore. Verified immutably on Ethereum Sepolia.
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+              Surface a recurring operational chore. Recorded immutably on Ethereum Sepolia.
             </p>
           </div>
-          <button 
+          <button
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
-              color: 'var(--text-muted)'
+              padding: '4px',
             }}
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Creator Wallet Info */}
-          <div style={{
-            padding: '0.65rem 0.85rem',
-            borderRadius: '0.65rem',
-            background: 'var(--bg-surface)',
+        {/* Creator Wallet Info */}
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-surface-alt)',
             border: '1px solid var(--border-subtle)',
-            marginBottom: '1rem',
-            fontSize: '0.75rem',
+            marginBottom: '16px',
+            fontSize: '11px',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Wallet size={13} color="var(--accent-primary)" />
-              <span style={{ color: 'var(--text-secondary)' }}>Publishing as Web3 Creator:</span>
-              <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{formatAddress(wallet.address)}</span>
-            </div>
-            <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>Zero Gas Fee (Free)</span>
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Wallet size={14} color="var(--accent)" />
+            <span style={{ color: 'var(--text-secondary)' }}>Signer:</span>
+            <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontWeight: 600 }}>
+              {wallet.address ? formatAddress(wallet.address) : 'Local EVM Key'}
+            </span>
           </div>
+          <span style={{ color: 'var(--success-text)', fontWeight: 600 }}>
+            Gas-Free Relayer Active
+          </span>
+        </div>
 
-          {/* Title */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
               Chore Title *
             </label>
-            <input 
-              type="text" 
-              placeholder='e.g. "Auto-generate Amazon flat files from Shopify CSV imports"'
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g., FBA stranded inventory mismatch after repricing run"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="input-field"
               required
             />
           </div>
 
-          {/* Description */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              Problem Description &amp; Desired Fix *
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              Detailed Description *
             </label>
-            <textarea 
+            <textarea
+              className="input-field"
               rows={4}
-              placeholder="Describe the workflow friction, how many hours it takes you, and what the automated tool should do..."
+              placeholder="Explain the recurring friction: how many hours per week it drains, what manual steps are needed..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="input-field"
-              style={{ resize: 'vertical' }}
               required
+              style={{ resize: 'vertical' }}
             />
           </div>
 
-          {/* Category & Pain */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Category
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                Operational Category
               </label>
-              <select 
-                value={category} 
-                onChange={(e) => setCategory(e.target.value)}
+              <select
                 className="input-field"
-                style={{ cursor: 'pointer' }}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
               >
-                {CATEGORIES.map(c => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
                 Pain Severity (1-5)
               </label>
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                {[1, 2, 3, 4, 5].map(lvl => (
-                  <button
-                    key={lvl}
-                    type="button"
-                    onClick={() => setPain(lvl)}
-                    style={{
-                      flex: 1,
-                      padding: '0.65rem 0',
-                      borderRadius: '0.5rem',
-                      background: pain === lvl ? 'var(--accent-rose)' : 'var(--bg-surface)',
-                      color: pain === lvl ? '#FFF' : 'var(--text-primary)',
-                      border: '1px solid var(--border-subtle)',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {lvl}
-                  </button>
-                ))}
-              </div>
+              <select
+                className="input-field"
+                value={pain}
+                onChange={(e) => setPain(e.target.value)}
+              >
+                <option value="1">1 — Low friction</option>
+                <option value="2">2 — Noticeable drag</option>
+                <option value="3">3 — Moderate time sink</option>
+                <option value="4">4 — Major blocker</option>
+                <option value="5">5 — Critical daily crisis</option>
+              </select>
             </div>
           </div>
 
-          {/* Funding Target & Marketplaces */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Funding Target ($)
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                Funding Escrow Goal ($ USD)
               </label>
-              <input 
+              <input
                 type="number"
-                min="0"
-                step="50"
+                className="input-field"
+                placeholder="1000"
                 value={fundingGoal}
                 onChange={(e) => setFundingGoal(e.target.value)}
-                className="input-field"
+                min="0"
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Marketplaces (comma-separated)
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                Your Seller Name / Handle *
               </label>
-              <input 
-                type="text" 
-                placeholder="Amazon, Shopify, eBay"
-                value={platforms}
-                onChange={(e) => setPlatforms(e.target.value)}
+              <input
+                type="text"
                 className="input-field"
+                placeholder="e.g., ApexGoods or seller_42"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                required
               />
             </div>
           </div>
 
-          {/* Author */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              Your Name or Seller Brand *
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              Affected Marketplaces & Tools
             </label>
-            <input 
+            <input
               type="text"
-              placeholder="e.g. Apex Merchant Group"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
               className="input-field"
-              required
+              placeholder="Amazon, Shopify, eBay, Walmart, ShipStation"
+              value={platforms}
+              onChange={(e) => setPlatforms(e.target.value)}
             />
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+              Comma-separated list of affected platforms
+            </span>
           </div>
 
-          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-            <ShieldCheck size={16} />
-            <span>Publish &amp; Mint On-Chain Chore Demand</span>
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px' }}>
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              Register Chore on EVM
+            </button>
+          </div>
         </form>
       </div>
     </div>

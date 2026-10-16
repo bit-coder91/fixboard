@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../lib/AppContext';
 import { formatAddress, computeChoreHash } from '../lib/web3';
 import { 
@@ -6,25 +6,32 @@ import {
   ShieldCheck, 
   ExternalLink, 
   Search, 
-  Filter, 
   CheckCircle, 
-  Layers, 
-  Lock, 
   Vote, 
   DollarSign, 
   FileText, 
   MessageSquare,
-  Sparkles,
-  ArrowRight
+  Hash
 } from 'lucide-react';
 
 const ACTION_BADGES = {
-  CHORE_REGISTERED: { label: 'Chore Registered', color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)', icon: FileText },
-  VOTE_CAST: { label: 'Vote Cast', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', icon: Vote },
-  VOTE_REVOKED: { label: 'Vote Revoked', color: '#F43F5E', bg: 'rgba(244, 63, 94, 0.12)', icon: Vote },
-  PLEDGE_MADE: { label: 'Pledge Escrowed', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)', icon: DollarSign },
-  COMMENT_RECORDED: { label: 'Comment Hash', color: '#A855F7', bg: 'rgba(168, 85, 247, 0.12)', icon: MessageSquare }
+  CHORE_REGISTERED: { label: 'Chore Registered', color: 'var(--accent)', bg: 'var(--accent-subtle)', icon: FileText },
+  VOTE_CAST: { label: 'Vote Cast', color: 'var(--success-text)', bg: 'var(--success-subtle)', icon: Vote },
+  VOTE_REVOKED: { label: 'Vote Revoked', color: 'var(--danger-text)', bg: 'var(--danger-subtle)', icon: Vote },
+  PLEDGE_MADE: { label: 'Pledge Escrowed', color: 'var(--info-text)', bg: 'var(--info-subtle)', icon: DollarSign },
+  COMMENT_RECORDED: { label: 'Comment Hash', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.1)', icon: MessageSquare }
 };
+
+function formatTimeAgo(ts) {
+  if (!ts) return 'recently';
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
 
 export default function AuditTrailModal({ isOpen, onClose }) {
   const { auditTrail, chores, contractAddress } = useApp();
@@ -36,9 +43,19 @@ export default function AuditTrailModal({ isOpen, onClose }) {
   const [selectedChoreToVerify, setSelectedChoreToVerify] = useState(chores[0]?.id || '');
   const [verificationResult, setVerificationResult] = useState(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const filteredLogs = auditTrail.filter(entry => {
+  const filteredLogs = auditTrail.filter((entry) => {
     if (filterAction !== 'ALL' && entry.action !== filterAction) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -53,7 +70,7 @@ export default function AuditTrailModal({ isOpen, onClose }) {
   });
 
   const handleRunVerification = (choreId) => {
-    const target = chores.find(c => c.id === choreId);
+    const target = chores.find((c) => c.id === choreId);
     if (!target) return;
     const computed = computeChoreHash(target);
     const matches = target.choreHash ? computed === target.choreHash : true;
@@ -67,369 +84,317 @@ export default function AuditTrailModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="audit-modal-title">
       <div 
-        className="modal-content glass-panel" 
-        onClick={e => e.stopPropagation()}
-        style={{ maxWidth: '840px', width: '95%' }}
+        className="modal-content" 
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '680px' }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #10B981, #06B6D4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFF'
-            }}>
-              <ShieldCheck size={22} />
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={18} color="var(--success-text)" />
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Ethereum Blockchain Audit Trail</h2>
-                <span style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 700,
-                  padding: '0.15rem 0.45rem',
-                  borderRadius: '9999px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: 'var(--accent-emerald)',
-                  border: '1px solid var(--border-subtle)'
-                }}>
-                  Live Sepolia EVM
-                </span>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Immutable, tamper-proof record of all seller chore demand votes, pledges, and registrations
+              <h3 id="audit-modal-title" style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                Ethereum Sepolia Audit Ledger
+              </h3>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+                Decentralized state verification for small seller demand chores
               </p>
             </div>
           </div>
           <button 
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
-              background: 'none',
+              background: 'transparent',
               border: 'none',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '0.25rem'
+              padding: '4px',
             }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Contract Ribbon */}
         <div style={{
           display: 'flex',
-          gap: '0.5rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          marginBottom: '1.25rem',
-          paddingBottom: '0.5rem'
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '8px 12px',
+          borderRadius: 'var(--radius-sm)',
+          background: 'var(--bg-surface-alt)',
+          border: '1px solid var(--border-subtle)',
+          fontSize: '11px',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '8px'
         }}>
-          <button 
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>Contract: </span>
+            <span style={{ fontFamily: 'monospace', color: 'var(--accent)', fontWeight: 600 }}>
+              {formatAddress(contractAddress)}
+            </span>
+          </div>
+          <a
+            href={`https://sepolia.etherscan.io/address/${contractAddress}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: 'var(--accent)',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+              fontWeight: 600
+            }}
+          >
+            <span>Etherscan</span>
+            <ExternalLink size={11} />
+          </a>
+        </div>
+
+        {/* Tab Controls */}
+        <div style={{
+          display: 'flex',
+          background: 'var(--bg-surface-alt)',
+          padding: '3px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-default)',
+          marginBottom: '16px'
+        }}>
+          <button
             onClick={() => setActiveTab('audit')}
             style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
+              flex: 1,
+              padding: '6px',
+              borderRadius: 'var(--radius-sm)',
               border: 'none',
-              background: activeTab === 'audit' ? 'var(--accent-primary)' : 'transparent',
-              color: activeTab === 'audit' ? '#FFF' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: '0.8125rem',
+              background: activeTab === 'audit' ? 'var(--bg-surface)' : 'transparent',
+              color: activeTab === 'audit' ? 'var(--text-primary)' : 'var(--text-muted)',
+              fontSize: '12px',
+              fontWeight: activeTab === 'audit' ? 600 : 500,
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem'
+              boxShadow: activeTab === 'audit' ? 'var(--shadow-sm)' : 'none',
+              transition: 'all 120ms ease'
             }}
           >
-            <Layers size={14} />
-            <span>Audit Ledger ({auditTrail.length} Events)</span>
+            Ledger Events ({auditTrail.length})
           </button>
-
-          <button 
-            onClick={() => {
-              setActiveTab('verifier');
-              if (!verificationResult && chores.length > 0) {
-                handleRunVerification(chores[0].id);
-              }
-            }}
+          <button
+            onClick={() => setActiveTab('verifier')}
             style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
+              flex: 1,
+              padding: '6px',
+              borderRadius: 'var(--radius-sm)',
               border: 'none',
-              background: activeTab === 'verifier' ? 'var(--accent-primary)' : 'transparent',
-              color: activeTab === 'verifier' ? '#FFF' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: '0.8125rem',
+              background: activeTab === 'verifier' ? 'var(--bg-surface)' : 'transparent',
+              color: activeTab === 'verifier' ? 'var(--text-primary)' : 'var(--text-muted)',
+              fontSize: '12px',
+              fontWeight: activeTab === 'verifier' ? 600 : 500,
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem'
+              boxShadow: activeTab === 'verifier' ? 'var(--shadow-sm)' : 'none',
+              transition: 'all 120ms ease'
             }}
           >
-            <Lock size={14} />
-            <span>Cryptographic Integrity Verifier</span>
+            Cryptographic Verifier
           </button>
         </div>
 
-        {activeTab === 'audit' ? (
+        {/* Tab 1: Audit List */}
+        {activeTab === 'audit' && (
           <div>
-            {/* Filter and Search Bar */}
-            <div style={{
-              display: 'flex',
-              gap: '0.75rem',
-              marginBottom: '1rem',
-              flexWrap: 'wrap'
-            }}>
-              <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-                <Search size={14} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
+            {/* Filter toolbar */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Filter by title, actor, or hash..."
                   className="input-field"
-                  placeholder="Search by Tx Hash, chore title, or wallet..."
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '2rem', paddingRight: '0.75rem', paddingTop: '0.55rem', paddingBottom: '0.55rem', fontSize: '0.8125rem' }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ paddingLeft: '28px', fontSize: '12px' }}
                 />
               </div>
 
               <select
-                className="input-field"
                 value={filterAction}
-                onChange={e => setFilterAction(e.target.value)}
-                style={{ width: 'auto', minWidth: '160px', padding: '0.55rem 0.85rem', fontSize: '0.8125rem' }}
+                onChange={(e) => setFilterAction(e.target.value)}
+                style={{
+                  background: 'var(--bg-surface-alt)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-primary)',
+                  fontSize: '12px',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
               >
-                <option value="ALL">All Actions ({auditTrail.length})</option>
-                <option value="CHORE_REGISTERED">Chore Registrations</option>
-                <option value="VOTE_CAST">Votes Cast</option>
-                <option value="PLEDGE_MADE">Pledges Escrowed</option>
+                <option value="ALL">All Actions</option>
+                <option value="CHORE_REGISTERED">Registrations</option>
+                <option value="VOTE_CAST">Votes</option>
+                <option value="PLEDGE_MADE">Pledges</option>
                 <option value="COMMENT_RECORDED">Comments</option>
               </select>
             </div>
 
-            {/* Audit Log Table / Cards */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-              maxHeight: '440px',
-              overflowY: 'auto',
-              paddingRight: '0.35rem'
-            }}>
-              {filteredLogs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                  No blockchain audit events match your filter.
-                </div>
-              ) : (
-                filteredLogs.map((entry) => {
-                  const meta = ACTION_BADGES[entry.action] || { label: entry.action, color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)', icon: FileText };
-                  const Icon = meta.icon;
+            {/* Event rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
+              {filteredLogs.map((entry) => {
+                const meta = ACTION_BADGES[entry.action] || {
+                  label: entry.action,
+                  color: 'var(--accent)',
+                  bg: 'var(--accent-subtle)',
+                  icon: FileText
+                };
+                const Icon = meta.icon;
 
-                  return (
-                    <div 
-                      key={entry.id}
-                      style={{
-                        padding: '1rem',
-                        borderRadius: '0.85rem',
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-subtle)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem',
-                        transition: 'border-color 0.2s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            padding: '0.2rem 0.55rem',
-                            borderRadius: '9999px',
-                            background: meta.bg,
-                            color: meta.color,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem'
-                          }}>
-                            <Icon size={12} />
-                            {meta.label}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {entry.choreTitle}
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          <span>Block #{entry.blockNumber}</span>
-                          <span>&bull;</span>
-                          <span>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                        </div>
-                      </div>
-
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: '0.75rem',
-                        color: 'var(--text-secondary)',
-                        flexWrap: 'wrap',
-                        gap: '0.5rem',
-                        fontFamily: 'monospace'
-                      }}>
-                        <div>
-                          <span style={{ color: 'var(--text-muted)' }}>Actor: </span>
-                          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatAddress(entry.actor)}</span>
-                          {entry.value && entry.value !== '0' && (
-                            <span style={{ marginLeft: '0.5rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-                              [{entry.value}]
-                            </span>
-                          )}
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>Tx: {formatAddress(entry.txHash)}</span>
-                          <a 
-                            href={`https://sepolia.etherscan.io/tx/${entry.txHash}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              color: 'var(--accent-primary)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '2px',
-                              textDecoration: 'none'
-                            }}
-                            title="Verify on Sepolia Etherscan"
-                          >
-                            <span>Etherscan</span>
-                            <ExternalLink size={11} />
-                          </a>
-                        </div>
-                      </div>
-
-                      {entry.dataHash && entry.dataHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
-                        <div style={{
-                          fontSize: '0.6875rem',
-                          fontFamily: 'monospace',
-                          color: 'var(--text-muted)',
-                          background: 'var(--bg-input)',
-                          padding: '0.35rem 0.65rem',
-                          borderRadius: '0.4rem',
-                          wordBreak: 'break-all'
+                return (
+                  <div
+                    key={entry.id}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--bg-surface-alt)',
+                      border: '1px solid var(--border-subtle)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          padding: '1px 6px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: meta.bg,
+                          color: meta.color,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
                         }}>
-                          <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>Keccak256 Hash: </span>
-                          {entry.dataHash}
-                        </div>
-                      )}
+                          <Icon size={10} />
+                          <span>{meta.label}</span>
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {entry.choreTitle || 'Operational Chore'}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                        {formatTimeAgo(entry.timestamp)}
+                      </span>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Cryptographic Verifier Tab */
-          <div>
-            <div style={{
-              padding: '1.25rem',
-              borderRadius: '1rem',
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              marginBottom: '1.25rem'
-            }}>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Sparkles size={16} color="var(--accent-cyan)" />
-                <span>Zero-Knowledge / Tamper-Proof Cryptographic Verification</span>
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                Every seller chore demand posted on FixBoard is hashed with Ethereum Keccak-256 and registered into our Solidity smart contract. 
-                Select any chore below to run an instant client-side verification check:
-              </p>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-                <select 
-                  className="input-field"
-                  value={selectedChoreToVerify}
-                  onChange={e => {
-                    setSelectedChoreToVerify(e.target.value);
-                    handleRunVerification(e.target.value);
-                  }}
-                  style={{ flex: 1 }}
-                >
-                  {chores.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.title.substring(0, 70)}...
-                    </option>
-                  ))}
-                </select>
-                <button 
-                  className="btn-primary"
-                  onClick={() => handleRunVerification(selectedChoreToVerify)}
-                  style={{ whiteSpace: 'nowrap' }}
-                >
-                  Verify Now
-                </button>
-              </div>
-
-              {verificationResult && (
-                <div style={{
-                  padding: '1rem',
-                  borderRadius: '0.75rem',
-                  background: verificationResult.matches ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.08)',
-                  border: `1px solid ${verificationResult.matches ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <CheckCircle size={18} color="var(--accent-emerald)" />
-                    <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--accent-emerald)' }}>
-                      Cryptographic Integrity Confirmed: 100% Authentic & Tamper-Proof
-                    </span>
-                  </div>
-
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.35rem', fontFamily: 'monospace' }}>
-                    <div>
-                      <strong style={{ color: 'var(--text-primary)' }}>Chore ID: </strong>
-                      {verificationResult.chore.id}
-                    </div>
-                    <div>
-                      <strong style={{ color: 'var(--text-primary)' }}>Calculated Keccak256: </strong>
-                      <span style={{ color: 'var(--accent-cyan)' }}>{verificationResult.computedHash}</span>
-                    </div>
-                    <div>
-                      <strong style={{ color: 'var(--text-primary)' }}>Solidity On-Chain Hash: </strong>
-                      <span style={{ color: 'var(--accent-emerald)' }}>{verificationResult.onChainHash}</span>
-                    </div>
-                    <div>
-                      <strong style={{ color: 'var(--text-primary)' }}>Ethereum Smart Contract: </strong>
-                      <span>{contractAddress}</span>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      fontFamily: 'monospace'
+                    }}>
+                      <span>Actor: {formatAddress(entry.actor)}</span>
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${entry.txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: 'var(--accent)', textDecoration: 'none' }}
+                      >
+                        Tx: {formatAddress(entry.txHash)}
+                      </a>
                     </div>
                   </div>
+                );
+              })}
+
+              {filteredLogs.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '24px 8px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                  No ledger entries found matching filters.
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Footer */}
-        <div style={{
-          marginTop: '1.25rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingTop: '0.85rem',
-          borderTop: '1px solid var(--border-subtle)',
-          fontSize: '0.75rem',
-          color: 'var(--text-muted)'
-        }}>
-          <div>
-            Contract: <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{formatAddress(contractAddress)}</span>
+        {/* Tab 2: Verifier */}
+        {activeTab === 'verifier' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
+              Verify state proof: Computes Keccak-256 hash client-side and validates against Ethereum Sepolia on-chain consensus.
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <select
+                className="input-field"
+                value={selectedChoreToVerify}
+                onChange={(e) => {
+                  setSelectedChoreToVerify(e.target.value);
+                  handleRunVerification(e.target.value);
+                }}
+                style={{ flex: 1, minWidth: '240px' }}
+              >
+                {chores.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn-primary"
+                onClick={() => handleRunVerification(selectedChoreToVerify || chores[0]?.id)}
+              >
+                Compute Hash
+              </button>
+            </div>
+
+            {verificationResult && (
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-surface-alt)',
+                border: `1px solid ${verificationResult.matches ? 'var(--success)' : 'var(--danger)'}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  <CheckCircle size={15} color="var(--success-text)" />
+                  <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--success-text)' }}>
+                    Cryptographic Integrity Confirmed
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--text-secondary)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  fontFamily: 'monospace'
+                }}>
+                  <div>
+                    <strong style={{ color: 'var(--text-primary)' }}>Chore: </strong>
+                    {verificationResult.chore.title}
+                  </div>
+                  <div>
+                    <strong style={{ color: 'var(--text-primary)' }}>Client Hash: </strong>
+                    <span style={{ color: 'var(--accent)' }}>{verificationResult.computedHash}</span>
+                  </div>
+                  <div>
+                    <strong style={{ color: 'var(--text-primary)' }}>On-Chain Hash: </strong>
+                    <span style={{ color: 'var(--success-text)' }}>{verificationResult.onChainHash}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <button className="btn-secondary" onClick={onClose} style={{ padding: '0.45rem 1.25rem' }}>
-            Close Ledger
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+          <button className="btn-secondary" onClick={onClose}>
+            Close
           </button>
         </div>
       </div>

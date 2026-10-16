@@ -1,27 +1,26 @@
 import React from 'react';
 import { useApp } from '../lib/AppContext';
-import { formatAddress } from '../lib/web3';
+import { useToast } from '../lib/ToastContext';
 import { 
   ArrowBigUp, 
   DollarSign, 
+  ShieldCheck, 
   Clock, 
-  MessageSquare, 
-  ExternalLink,
-  Flame,
-  ShieldCheck
+  MessageSquare,
+  AlertCircle
 } from 'lucide-react';
 
 const CATEGORY_META = {
-  catalog: { label: 'Catalog Cleanup', color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)' },
-  returns: { label: 'Return Handling', color: '#A855F7', bg: 'rgba(168, 85, 247, 0.12)' },
-  sync: { label: 'Marketplace Sync', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)' },
-  listings: { label: 'Listing Errors', color: '#F43F5E', bg: 'rgba(244, 63, 94, 0.12)' },
-  pricing: { label: 'Pricing Rules', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
-  shipping: { label: 'Shipping & Dim', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
-  other: { label: 'Operations', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' },
+  catalog: { label: 'Catalog', color: 'var(--accent)', bg: 'var(--accent-subtle)' },
+  returns: { label: 'Returns', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.1)' },
+  sync: { label: 'Sync & API', color: 'var(--info-text)', bg: 'var(--info-subtle)' },
+  listings: { label: 'Listings', color: 'var(--danger-text)', bg: 'var(--danger-subtle)' },
+  pricing: { label: 'Pricing', color: 'var(--warning-text)', bg: 'var(--warning-subtle)' },
+  shipping: { label: 'Shipping', color: 'var(--success-text)', bg: 'var(--success-subtle)' },
+  other: { label: 'Operations', color: 'var(--text-secondary)', bg: 'var(--bg-surface-alt)' },
 };
 
-const PAIN_LABELS = ['', 'Minor issue', 'Noticeable drag', 'High time sink', 'Major blocker', 'Critical crisis'];
+const PAIN_LABELS = ['', 'Low friction', 'Noticeable drag', 'Time sink', 'Major blocker', 'Critical crisis'];
 
 function formatTimeAgo(ts) {
   if (!ts) return 'recently';
@@ -36,114 +35,152 @@ function formatTimeAgo(ts) {
 
 export default function ChoreCard({ chore, onSelect, onOpenPledge }) {
   const { userVotedIds, voteChore } = useApp();
-  const isVoted = userVotedIds.includes(chore.id);
+  const toast = useToast();
+  const isVoted = userVotedIds?.includes(chore.id);
   const cat = CATEGORY_META[chore.category] || CATEGORY_META.other;
 
   const pct = chore.fundingGoal 
     ? Math.min(100, Math.round(((chore.fundingRaised || 0) / chore.fundingGoal) * 100))
     : 0;
 
+  const handleVote = async (e) => {
+    e.stopPropagation();
+    try {
+      await voteChore(chore.id);
+      if (!isVoted) {
+        toast.success('Vote recorded', 'Deterministic Keccak256 hash queued for Sepolia EVM');
+      }
+    } catch (err) {
+      toast.error('Vote failed', err.message);
+    }
+  };
+
   return (
     <article 
-      className="glass-panel" 
       onClick={() => onSelect(chore)}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(chore);
+        }
+      }}
+      aria-label={`Chore: ${chore.title}`}
       style={{
-        padding: '1.5rem',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        padding: '16px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         position: 'relative',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease'
+        transition: 'border-color 150ms ease, box-shadow 150ms ease',
+        boxShadow: 'var(--shadow-sm)',
+        outline: 'none',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border-focus)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border-default)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
       }}
     >
       <div>
-        {/* Header Badges */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+        {/* Top Meta Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* Category tag */}
             <span style={{
-              fontSize: '0.75rem',
-              fontWeight: 700,
+              fontSize: '11px',
+              fontWeight: 600,
               color: cat.color,
               background: cat.bg,
-              padding: '0.2rem 0.6rem',
-              borderRadius: '9999px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em'
+              padding: '2px 7px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-subtle)',
             }}>
               {cat.label}
             </span>
 
-            {/* Ethereum Proof Badge */}
+            {/* Solidity / EVM verified badge */}
             <span style={{
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              padding: '0.15rem 0.45rem',
-              borderRadius: '9999px',
-              background: 'rgba(16, 185, 129, 0.1)',
-              color: 'var(--accent-emerald)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
+              fontSize: '10px',
+              fontWeight: 600,
+              padding: '2px 6px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--success-subtle)',
+              color: 'var(--success-text)',
+              border: '1px solid var(--border-subtle)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '3px'
             }}
-            title={`On-Chain Hash: ${chore.choreHash || 'Verified'}`}
+            title={`Sepolia Verification Hash: ${chore.choreHash || 'Pending sync'}`}
             >
               <ShieldCheck size={11} />
-              <span>Sepolia Verified</span>
+              <span>EVM Verified</span>
             </span>
           </div>
 
+          {/* Status badge */}
           <span style={{
-            fontSize: '0.6875rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            padding: '0.15rem 0.55rem',
+            fontSize: '11px',
+            fontWeight: 600,
+            textTransform: 'capitalize',
+            padding: '2px 8px',
             borderRadius: '9999px',
-            background: chore.status === 'funded' ? 'rgba(16, 185, 129, 0.15)' :
-                        chore.status === 'in-progress' ? 'rgba(245, 158, 11, 0.15)' :
-                        chore.status === 'solved' ? 'rgba(6, 182, 212, 0.15)' : 'rgba(99, 102, 241, 0.15)',
-            color: chore.status === 'funded' ? 'var(--accent-emerald)' :
-                   chore.status === 'in-progress' ? 'var(--accent-amber)' :
-                   chore.status === 'solved' ? 'var(--accent-cyan)' : 'var(--accent-primary)'
+            background: chore.status === 'funded' ? 'var(--success-subtle)' :
+                        chore.status === 'in-progress' ? 'var(--warning-subtle)' :
+                        chore.status === 'solved' ? 'var(--info-subtle)' : 'var(--accent-subtle)',
+            color: chore.status === 'funded' ? 'var(--success-text)' :
+                   chore.status === 'in-progress' ? 'var(--warning-text)' :
+                   chore.status === 'solved' ? 'var(--info-text)' : 'var(--accent)',
+            border: '1px solid var(--border-subtle)'
           }}>
             {chore.status.replace('-', ' ')}
           </span>
         </div>
 
-        {/* Title & Description */}
+        {/* Title */}
         <h3 style={{
-          fontSize: '1.05rem',
-          fontWeight: 700,
+          fontSize: '15px',
+          fontWeight: 600,
           lineHeight: 1.35,
-          marginBottom: '0.5rem',
-          color: 'var(--text-primary)'
+          marginBottom: '6px',
+          color: 'var(--text-primary)',
+          letterSpacing: '-0.01em',
         }}>
           {chore.title}
         </h3>
+
+        {/* Description excerpt */}
         <p style={{
-          fontSize: '0.875rem',
+          fontSize: '13px',
           color: 'var(--text-secondary)',
-          lineHeight: 1.55,
-          marginBottom: '1rem',
+          lineHeight: 1.5,
+          marginBottom: '12px',
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}>
           {chore.description}
         </p>
 
-        {/* Platforms */}
+        {/* Platforms tags */}
         {chore.platforms && chore.platforms.length > 0 && (
-          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            {chore.platforms.map(p => (
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            {chore.platforms.map((p) => (
               <span key={p} style={{
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                padding: '0.1rem 0.45rem',
-                borderRadius: '0.35rem',
-                background: 'var(--bg-surface)',
+                fontSize: '11px',
+                fontWeight: 500,
+                padding: '1px 6px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-surface-alt)',
                 color: 'var(--text-secondary)',
                 border: '1px solid var(--border-subtle)'
               }}>
@@ -153,19 +190,18 @@ export default function ChoreCard({ chore, onSelect, onOpenPledge }) {
           </div>
         )}
 
-        {/* Severity / Pain indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Pain severity:</span>
+        {/* Severity Indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px', fontSize: '11px', color: 'var(--text-muted)' }}>
+          <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Pain:</span>
           <div style={{ display: 'flex', gap: '3px' }}>
-            {[1, 2, 3, 4, 5].map(lvl => (
+            {[1, 2, 3, 4, 5].map((lvl) => (
               <div 
                 key={lvl} 
                 style={{
-                  width: '8px',
-                  height: '8px',
+                  width: '6px',
+                  height: '6px',
                   borderRadius: '50%',
-                  background: lvl <= chore.pain ? 'var(--accent-rose)' : 'var(--border-subtle)',
-                  boxShadow: lvl <= chore.pain ? '0 0 6px rgba(244, 63, 94, 0.4)' : 'none'
+                  background: lvl <= chore.pain ? 'var(--accent)' : 'var(--border-default)',
                 }} 
               />
             ))}
@@ -175,11 +211,11 @@ export default function ChoreCard({ chore, onSelect, onOpenPledge }) {
       </div>
 
       <div>
-        {/* Funding Progress Bar */}
+        {/* Funding Goal Bar if enabled */}
         {chore.fundingGoal > 0 && (
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-              <span style={{ color: 'var(--accent-emerald)' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, marginBottom: '4px' }}>
+              <span style={{ color: 'var(--success-text)' }}>
                 ${chore.fundingRaised || 0} pledged
               </span>
               <span style={{ color: 'var(--text-muted)' }}>
@@ -188,65 +224,64 @@ export default function ChoreCard({ chore, onSelect, onOpenPledge }) {
             </div>
             <div style={{
               width: '100%',
-              height: '6px',
+              height: '4px',
               borderRadius: '9999px',
-              background: 'var(--bg-surface)',
+              background: 'var(--bg-surface-alt)',
               overflow: 'hidden'
             }}>
               <div style={{
                 width: `${pct}%`,
                 height: '100%',
-                background: 'linear-gradient(90deg, var(--accent-emerald), var(--accent-cyan))',
+                background: 'var(--success)',
                 borderRadius: '9999px',
-                transition: 'width 0.4s ease'
+                transition: 'width 250ms ease'
               }} />
             </div>
           </div>
         )}
 
-        {/* Footer Meta & Actions */}
+        {/* Footer Meta & Controls */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingTop: '0.85rem',
+          paddingTop: '10px',
           borderTop: '1px solid var(--border-subtle)',
-          fontSize: '0.75rem',
+          fontSize: '11px',
           color: 'var(--text-muted)'
         }}>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{chore.author}</span>
-            <span style={{ margin: '0 0.35rem' }}>&bull;</span>
+            <span>&bull;</span>
             <span>{formatTimeAgo(chore.createdAt)}</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {/* On-Chain Upvote Button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* Upvote button */}
             <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                voteChore(chore.id);
-              }}
+              onClick={handleVote}
+              aria-label={`Upvote chore. Current votes: ${chore.votes || 0}`}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.25rem',
-                padding: '0.35rem 0.65rem',
-                borderRadius: '0.5rem',
-                background: isVoted ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-surface)',
-                color: isVoted ? 'var(--accent-primary)' : 'var(--text-primary)',
-                border: isVoted ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
-                fontWeight: 700,
-                fontSize: '0.75rem',
-                cursor: 'pointer'
+                gap: '4px',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+                background: isVoted ? 'var(--accent-subtle)' : 'var(--bg-surface-alt)',
+                color: isVoted ? 'var(--accent)' : 'var(--text-primary)',
+                border: isVoted ? '1px solid var(--accent)' : '1px solid var(--border-default)',
+                fontWeight: 600,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 120ms ease',
               }}
               title="Cast verified vote on Ethereum Sepolia"
             >
-              <ArrowBigUp size={16} fill={isVoted ? 'currentColor' : 'none'} />
+              <ArrowBigUp size={15} fill={isVoted ? 'currentColor' : 'none'} />
               <span>{chore.votes || 0}</span>
             </button>
 
-            {/* Fund Pledge Button */}
+            {/* Pledge button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -255,19 +290,20 @@ export default function ChoreCard({ chore, onSelect, onOpenPledge }) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.25rem',
-                padding: '0.35rem 0.65rem',
-                borderRadius: '0.5rem',
-                background: 'rgba(16, 185, 129, 0.12)',
-                color: 'var(--accent-emerald)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                fontWeight: 700,
-                fontSize: '0.75rem',
-                cursor: 'pointer'
+                gap: '4px',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-surface-alt)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
+                fontWeight: 500,
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 120ms ease',
               }}
               title="Pledge funds toward this fix (USD or Sepolia ETH)"
             >
-              <DollarSign size={14} />
+              <DollarSign size={13} color="var(--success-text)" />
               <span>Pledge</span>
             </button>
           </div>

@@ -1,64 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../lib/AppContext';
+import { useToast } from '../lib/ToastContext';
 import { formatAddress } from '../lib/web3';
-import { X, DollarSign, CheckCircle2, ShieldCheck, Wallet, Sparkles } from 'lucide-react';
+import { X, DollarSign, CheckCircle2, ShieldCheck, Wallet } from 'lucide-react';
 
 export default function PledgeModal({ chore, onClose }) {
   const { pledgeChore, wallet } = useApp();
+  const toast = useToast();
   const [pledgeMode, setPledgeMode] = useState('crypto'); // 'crypto' | 'usd'
-  const [amountUSD, setAmountUSD] = useState(25);
-  const [amountETH, setAmountETH] = useState('0.05');
+  const [amountUSD, setAmountUSD] = useState(50);
+  const [amountETH, setAmountETH] = useState('0.10');
   const [name, setName] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [txDetails, setTxDetails] = useState(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (chore) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [chore, onClose]);
+
+  if (!chore) return null;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    const effectiveUSD = pledgeMode === 'crypto' ? Math.round(parseFloat(amountETH) * 500) : amountUSD;
-    const effectiveETH = pledgeMode === 'crypto' ? amountETH : (amountUSD / 500).toFixed(4);
+    const effectiveUSD = pledgeMode === 'crypto' ? Math.round(parseFloat(amountETH || 0) * 500) : Number(amountUSD || 0);
+    const effectiveETH = pledgeMode === 'crypto' ? amountETH : (Number(amountUSD || 0) / 500).toFixed(4);
 
-    pledgeChore(chore.id, effectiveUSD, name || 'Seller Community', effectiveETH);
+    pledgeChore(chore.id, effectiveUSD, name.trim() || 'Seller Community', effectiveETH);
     setTxDetails({
       eth: effectiveETH,
       usd: effectiveUSD,
-      actor: wallet.address
+      actor: wallet.address,
     });
     setSubmitted(true);
+    toast.success('Pledge escrowed', `Pledged ${effectiveETH} SEP ETH (~$${effectiveUSD}) to contract`);
     setTimeout(() => {
       onClose();
-    }, 2200);
+    }, 2000);
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="pledge-modal-title">
       <div 
-        className="modal-content glass-panel" 
+        className="modal-content" 
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '460px', background: 'var(--bg-card)' }}
+        style={{ maxWidth: '460px' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #10B981, #06B6D4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFF'
-            }}>
-              <DollarSign size={16} />
-            </div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Pledge Funds</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <DollarSign size={18} color="var(--success-text)" />
+            <h3 id="pledge-modal-title" style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+              Pledge Escrow Funds
+            </h3>
           </div>
           <button 
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
               background: 'transparent',
               border: 'none',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
-              color: 'var(--text-muted)'
+              padding: '4px',
             }}
           >
             <X size={18} />
@@ -66,215 +74,204 @@ export default function PledgeModal({ chore, onClose }) {
         </div>
 
         {submitted ? (
-          <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-            <CheckCircle2 size={48} color="var(--accent-emerald)" style={{ margin: '0 auto 1rem' }} />
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-              On-Chain Pledge Confirmed!
+          <div style={{ textAlign: 'center', padding: '24px 12px' }}>
+            <CheckCircle2 size={40} color="var(--success-text)" style={{ margin: '0 auto 12px' }} />
+            <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              On-Chain Pledge Confirmed
             </h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              Pledged {txDetails?.eth} SEP ETH (~${txDetails?.usd}) to FixBoard Solidity contract.
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '14px' }}>
+              Escrowed {txDetails?.eth} SEP ETH (~${txDetails?.usd}) to FixBoard Solidity contract.
             </p>
             <div style={{
-              padding: '0.65rem',
-              borderRadius: '0.5rem',
-              background: 'rgba(16, 185, 129, 0.1)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
-              fontSize: '0.75rem',
-              color: 'var(--accent-emerald)',
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--success-subtle)',
+              border: '1px solid var(--border-subtle)',
+              fontSize: '11px',
+              color: 'var(--success-text)',
               fontWeight: 600,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.35rem'
+              gap: '6px'
             }}>
               <ShieldCheck size={14} />
-              <span>Immutable transaction logged to Ethereum Sepolia Audit Ledger</span>
+              <span>Immutable transaction logged to Ethereum Sepolia Ledger</span>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              Backing chore: <strong>"{chore.title}"</strong>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              Backing chore: <strong style={{ color: 'var(--text-primary)' }}>"{chore.title}"</strong>
             </p>
 
             {/* Mode Selector */}
             <div style={{
               display: 'flex',
-              gap: '0.5rem',
-              padding: '0.25rem',
-              borderRadius: '0.75rem',
-              background: 'var(--bg-surface)',
-              marginBottom: '1.25rem'
+              background: 'var(--bg-surface-alt)',
+              padding: '3px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-default)',
+              marginBottom: '16px'
             }}>
               <button
                 type="button"
                 onClick={() => setPledgeMode('crypto')}
                 style={{
                   flex: 1,
-                  padding: '0.45rem',
-                  borderRadius: '0.5rem',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-sm)',
                   border: 'none',
-                  background: pledgeMode === 'crypto' ? 'var(--accent-primary)' : 'transparent',
-                  color: pledgeMode === 'crypto' ? '#FFF' : 'var(--text-secondary)',
-                  fontWeight: 700,
-                  fontSize: '0.8125rem',
+                  background: pledgeMode === 'crypto' ? 'var(--bg-surface)' : 'transparent',
+                  color: pledgeMode === 'crypto' ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontSize: '12px',
+                  fontWeight: pledgeMode === 'crypto' ? 600 : 500,
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.35rem'
+                  boxShadow: pledgeMode === 'crypto' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 120ms ease',
                 }}
               >
-                <Sparkles size={14} />
-                <span>Sepolia ETH (Free Web3)</span>
+                Ethereum Sepolia (ETH)
               </button>
-
               <button
                 type="button"
                 onClick={() => setPledgeMode('usd')}
                 style={{
                   flex: 1,
-                  padding: '0.45rem',
-                  borderRadius: '0.5rem',
+                  padding: '6px',
+                  borderRadius: 'var(--radius-sm)',
                   border: 'none',
-                  background: pledgeMode === 'usd' ? 'var(--accent-primary)' : 'transparent',
-                  color: pledgeMode === 'usd' ? '#FFF' : 'var(--text-secondary)',
-                  fontWeight: 700,
-                  fontSize: '0.8125rem',
+                  background: pledgeMode === 'usd' ? 'var(--bg-surface)' : 'transparent',
+                  color: pledgeMode === 'usd' ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontSize: '12px',
+                  fontWeight: pledgeMode === 'usd' ? 600 : 500,
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.35rem'
+                  boxShadow: pledgeMode === 'usd' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 120ms ease',
                 }}
               >
-                <DollarSign size={14} />
-                <span>Standard USD</span>
+                USD Equivalence ($)
               </button>
             </div>
 
-            {/* Wallet Info Box */}
-            <div style={{
-              padding: '0.75rem',
-              borderRadius: '0.65rem',
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              marginBottom: '1rem',
-              fontSize: '0.75rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Wallet size={14} color="var(--accent-cyan)" />
-                <span style={{ color: 'var(--text-secondary)' }}>Paying from:</span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{formatAddress(wallet.address)}</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>{wallet.balance} SEP</span>
-              </div>
+            {/* Amount input */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                {pledgeMode === 'crypto' ? 'Pledge Amount in Sepolia ETH' : 'Pledge Amount in USD ($)'}
+              </label>
+
+              {pledgeMode === 'crypto' ? (
+                <div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    className="input-field"
+                    value={amountETH}
+                    onChange={(e) => setAmountETH(e.target.value)}
+                    required
+                  />
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                    {['0.05', '0.10', '0.25', '0.50'].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setAmountETH(amt)}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: amountETH === amt ? 'var(--accent-subtle)' : 'var(--bg-surface-alt)',
+                          border: amountETH === amt ? '1px solid var(--accent)' : '1px solid var(--border-default)',
+                          color: amountETH === amt ? 'var(--accent)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {amt} SEP
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="number"
+                    step="5"
+                    min="5"
+                    className="input-field"
+                    value={amountUSD}
+                    onChange={(e) => setAmountUSD(e.target.value)}
+                    required
+                  />
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                    {[25, 50, 100, 250].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setAmountUSD(amt)}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: amountUSD === amt ? 'var(--accent-subtle)' : 'var(--bg-surface-alt)',
+                          border: amountUSD === amt ? '1px solid var(--accent)' : '1px solid var(--border-default)',
+                          color: amountUSD === amt ? 'var(--accent)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {pledgeMode === 'crypto' ? (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                  Sepolia ETH Amount (Testnet - Free)
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  {['0.01', '0.05', '0.10', '0.25'].map(val => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setAmountETH(val)}
-                      style={{
-                        flex: 1,
-                        padding: '0.45rem',
-                        borderRadius: '0.5rem',
-                        background: amountETH === val ? 'rgba(6, 182, 212, 0.2)' : 'var(--bg-surface)',
-                        border: amountETH === val ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                        color: amountETH === val ? 'var(--accent-cyan)' : 'var(--text-primary)',
-                        fontWeight: 700,
-                        fontSize: '0.8125rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {val} SEP
-                    </button>
-                  ))}
-                </div>
-                <input 
-                  type="text"
-                  value={amountETH}
-                  onChange={(e) => setAmountETH(e.target.value)}
-                  className="input-field"
-                  placeholder="0.05"
-                  required
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  <span>Est. Value: ~${Math.round(parseFloat(amountETH || 0) * 500)} USD</span>
-                  <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>Gas fee: 0.0000 SEP (Free)</span>
-                </div>
-              </div>
-            ) : (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                  Pledge Amount ($)
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  {[15, 25, 50, 100].map(val => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setAmountUSD(val)}
-                      style={{
-                        flex: 1,
-                        padding: '0.45rem',
-                        borderRadius: '0.5rem',
-                        background: amountUSD === val ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-surface)',
-                        border: amountUSD === val ? '1px solid var(--accent-emerald)' : '1px solid var(--border-subtle)',
-                        color: amountUSD === val ? 'var(--accent-emerald)' : 'var(--text-primary)',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ${val}
-                    </button>
-                  ))}
-                </div>
-                <input 
-                  type="number"
-                  min="1"
-                  max="10000"
-                  value={amountUSD}
-                  onChange={(e) => setAmountUSD(Number(e.target.value))}
-                  className="input-field"
-                  required
-                />
-              </div>
-            )}
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
-                Your Name / Seller Store Display
+            {/* Backer name */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                Your Name / Brand (Optional)
               </label>
-              <input 
+              <input
                 type="text"
-                placeholder="e.g. Apex Outlets"
+                placeholder="e.g. ApexBrands or Seller_88"
+                className="input-field"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="input-field"
-                required
               />
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              <ShieldCheck size={16} />
-              <span>
-                {pledgeMode === 'crypto' 
-                  ? `Sign & Escrow ${amountETH} SEP On-Chain` 
-                  : `Confirm $${amountUSD} Pledge`}
+            {/* Wallet footer info */}
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-surface-alt)',
+              border: '1px solid var(--border-subtle)',
+              marginBottom: '16px',
+              fontSize: '11px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Wallet size={14} color="var(--accent)" />
+                <span style={{ color: 'var(--text-secondary)' }}>Signer:</span>
+                <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {wallet.address ? formatAddress(wallet.address) : 'Demo Relayer'}
+                </span>
+              </div>
+              <span style={{ color: 'var(--text-muted)' }}>
+                Balance: {wallet.balance} SEP
               </span>
-            </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary">
+                Confirm Escrow Pledge
+              </button>
+            </div>
           </form>
         )}
       </div>
