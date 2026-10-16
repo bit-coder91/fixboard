@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@babel/runtime": "^8.0.7",
-    "@next/swc-win32-x64-msvc": "^16.4.1",
     "ethers": "^6.17.0",
     "firebase": "^10.14.1",
     "lucide-react": "^0.453.0",
